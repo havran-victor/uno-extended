@@ -1,0 +1,924 @@
+swagger: '2.0'
+info:
+  version: 1.0.0
+  title: UNO Extended Edition API
+  description: >
+    API for UNO Extended Edition - a card game with
+    configurable house rules (stacking, 7-0 swap, jump-in,
+    speed mode, teams).
+schemes:
+  - https
+host: uno-api.example.io
+basePath: /v1
+
+securityDefinitions:
+  BearerAuth:
+    type: apiKey
+    name: Authorization
+    in: header
+    description: "Bearer {token}"
+
+security:
+  - BearerAuth: []
+
+consumes:
+  - application/json
+produces:
+  - application/json
+
+definitions:
+  User:
+    type: object
+    required: [id, email, displayName, createdAt]
+    properties:
+      id:
+        type: string
+        format: uuid
+      email:
+        type: string
+        format: email
+      displayName:
+        type: string
+      avatarUrl:
+        type: string
+      createdAt:
+        type: string
+        format: date-time
+
+  PlayerStats:
+    type: object
+    properties:
+      userId:
+        type: string
+        format: uuid
+      gamesPlayed:
+        type: integer
+      gamesWon:
+        type: integer
+      winRate:
+        type: number
+        format: float
+      totalPoints:
+        type: integer
+      cardsPlayed:
+        type: integer
+      unoCallsMade:
+        type: integer
+      challengesWon:
+        type: integer
+      challengesLost:
+        type: integer
+
+  GameSettings:
+    type: object
+    properties:
+      allowStacking:
+        type: boolean
+        default: false
+      sevenZeroRule:
+        type: boolean
+        default: false
+      allowJumpIn:
+        type: boolean
+        default: false
+      drawUntilPlayable:
+        type: boolean
+        default: false
+      forcePlayDrawn:
+        type: boolean
+        default: false
+      noBluffWildDrawFour:
+        type: boolean
+        default: false
+      pointsMode:
+        type: boolean
+        default: true
+      teamMode:
+        type: boolean
+        default: false
+      speedMode:
+        type: boolean
+        default: false
+      turnTimerSeconds:
+        type: integer
+        default: 30
+
+  Game:
+    type: object
+    required: [id, name, hostPlayerId, phase, maxPlayers, createdAt]
+    properties:
+      id:
+        type: string
+        format: uuid
+      name:
+        type: string
+      hostPlayerId:
+        type: string
+        format: uuid
+      phase:
+        type: string
+        enum: [lobby, playing, round_over, finished]
+      maxPlayers:
+        type: integer
+        minimum: 2
+        maximum: 10
+      pointsToWin:
+        type: integer
+        default: 500
+      currentTurnPlayerId:
+        type: string
+        format: uuid
+      playDirection:
+        type: string
+        enum: [clockwise, counter_clockwise]
+      activeColor:
+        type: string
+        enum: [red, yellow, green, blue]
+      currentRound:
+        type: integer
+      pendingDrawCount:
+        type: integer
+        default: 0
+      settings:
+        $ref: '#/definitions/GameSettings'
+      createdAt:
+        type: string
+        format: date-time
+      updatedAt:
+        type: string
+        format: date-time
+
+  Player:
+    type: object
+    required: [id, userId, displayName, cardCount, totalScore, isActive]
+    properties:
+      id:
+        type: string
+        format: uuid
+      userId:
+        type: string
+        format: uuid
+      displayName:
+        type: string
+      cardCount:
+        type: integer
+      totalScore:
+        type: integer
+      saidUno:
+        type: boolean
+      isActive:
+        type: boolean
+      team:
+        type: string
+      joinedAt:
+        type: string
+        format: date-time
+
+  Card:
+    type: object
+    required: [id, type]
+    properties:
+      id:
+        type: string
+        format: uuid
+      color:
+        type: string
+        enum: [red, yellow, green, blue]
+      type:
+        type: string
+        enum: [number, skip, reverse, draw_two, wild, wild_draw_four, blank_wild]
+      value:
+        type: integer
+        minimum: 0
+        maximum: 9
+
+  DiscardPile:
+    type: object
+    properties:
+      topCard:
+        $ref: '#/definitions/Card'
+      activeColor:
+        type: string
+        enum: [red, yellow, green, blue]
+      cardCount:
+        type: integer
+
+  DrawPile:
+    type: object
+    properties:
+      cardCount:
+        type: integer
+
+  Turn:
+    type: object
+    required: [id, roundNumber, turnNumber, playerId, action, timestamp]
+    properties:
+      id:
+        type: string
+        format: uuid
+      roundNumber:
+        type: integer
+      turnNumber:
+        type: integer
+      playerId:
+        type: string
+        format: uuid
+      action:
+        type: string
+        enum: [play_card, draw_card, say_uno, challenge_uno, challenge_wild_draw_four, choose_color, end_turn, stack_draw, swap_hands, pass_all_hands, jump_in]
+      card:
+        $ref: '#/definitions/Card'
+      details:
+        type: object
+      timestamp:
+        type: string
+        format: date-time
+
+  Round:
+    type: object
+    properties:
+      roundNumber:
+        type: integer
+      winnerId:
+        type: string
+        format: uuid
+      scores:
+        type: object
+        additionalProperties:
+          type: integer
+      startedAt:
+        type: string
+        format: date-time
+      endedAt:
+        type: string
+        format: date-time
+
+  Scoreboard:
+    type: object
+    properties:
+      players:
+        type: array
+        items:
+          type: object
+          properties:
+            playerId:
+              type: string
+              format: uuid
+            displayName:
+              type: string
+            totalScore:
+              type: integer
+            roundScores:
+              type: array
+              items:
+                type: integer
+            team:
+              type: string
+
+  LeaderboardEntry:
+    type: object
+    properties:
+      userId:
+        type: string
+        format: uuid
+      displayName:
+        type: string
+      gamesWon:
+        type: integer
+      winRate:
+        type: number
+        format: float
+      totalPoints:
+        type: integer
+      rank:
+        type: integer
+
+  Penalty:
+    type: object
+    properties:
+      id:
+        type: string
+        format: uuid
+      playerId:
+        type: string
+        format: uuid
+      type:
+        type: string
+        enum: [missed_uno, illegal_wild_draw_four, timeout, forfeit]
+      cardsPenalized:
+        type: integer
+      roundNumber:
+        type: integer
+      timestamp:
+        type: string
+        format: date-time
+
+  CreateGameRequest:
+    type: object
+    required: [name]
+    properties:
+      name:
+        type: string
+      maxPlayers:
+        type: integer
+        minimum: 2
+        maximum: 10
+      pointsToWin:
+        type: integer
+        default: 500
+      settings:
+        $ref: '#/definitions/GameSettings'
+
+  PlayCardRequest:
+    type: object
+    required: [cardId]
+    properties:
+      cardId:
+        type: string
+        format: uuid
+      chosenColor:
+        type: string
+        enum: [red, yellow, green, blue]
+
+  ChooseColorRequest:
+    type: object
+    required: [color]
+    properties:
+      color:
+        type: string
+        enum: [red, yellow, green, blue]
+
+  ActionResultResponse:
+    type: object
+    properties:
+      success:
+        type: boolean
+      action:
+        type: string
+        enum: [play_card, draw_card, say_uno, challenge_uno, challenge_wild_draw_four, choose_color, end_turn, stack_draw, swap_hands, pass_all_hands, jump_in]
+      nextTurnPlayerId:
+        type: string
+        format: uuid
+      penalties:
+        type: array
+        items:
+          $ref: '#/definitions/Penalty'
+
+  ErrorResponse:
+    type: object
+    required: [code, message]
+    properties:
+      code:
+        type: string
+      message:
+        type: string
+
+paths:
+
+  /users/{userId}:
+    get:
+      tags: [Users]
+      summary: Get user profile
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          type: string
+          format: uuid
+      responses:
+        200:
+          description: User profile
+          schema:
+            $ref: '#/definitions/User'
+        404:
+          description: no such user
+
+  /users/{userId}/stats:
+    get:
+      tags: [Users]
+      summary: Player stats
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          type: string
+          format: uuid
+      responses:
+        200:
+          description: Player statistics
+          schema:
+            $ref: '#/definitions/PlayerStats'
+        404:
+          description: user does not exist
+
+  /leaderboard:
+    get:
+      tags: [Leaderboard]
+      summary: Rankings
+      security: []
+      parameters:
+        - name: sortBy
+          in: query
+          type: string
+          enum: [wins, winRate, totalPoints]
+          default: wins
+        - name: page
+          in: query
+          type: integer
+          default: 1
+        - name: pageSize
+          in: query
+          type: integer
+          default: 20
+          maximum: 100
+      responses:
+        200:
+          description: Leaderboard entries
+          schema:
+            type: object
+            properties:
+              entries:
+                type: array
+                items:
+                  $ref: '#/definitions/LeaderboardEntry'
+              totalCount:
+                type: integer
+              page:
+                type: integer
+              pageSize:
+                type: integer
+
+  /games:
+    get:
+      tags: [Games]
+      summary: List all games
+      parameters:
+        - name: status
+          in: query
+          type: string
+          enum: [lobby, playing, round_over, finished]
+        - name: maxPlayers
+          in: query
+          type: integer
+      responses:
+        200:
+          description: List of games
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/Game'
+    post:
+      tags: [Games]
+      summary: Create a new game
+      parameters:
+        - name: body
+          in: body
+          required: true
+          schema:
+            $ref: '#/definitions/CreateGameRequest'
+      responses:
+        201:
+          description: Game created
+          schema:
+            $ref: '#/definitions/Game'
+        400:
+          description: Invalid input
+
+  /games/{gameId}:
+    get:
+      tags: [Games]
+      summary: Game state
+      parameters:
+        - name: gameId
+          in: path
+          required: true
+          type: string
+          format: uuid
+      responses:
+        200:
+          description: Game state
+          schema:
+            $ref: '#/definitions/Game'
+        404:
+          description: no such game
+
+  /games/{gameId}/settings:
+    get:
+      tags: [Games]
+      summary: House rules config
+      parameters:
+        - name: gameId
+          in: path
+          required: true
+          type: string
+          format: uuid
+      responses:
+        200:
+          description: Game settings
+          schema:
+            $ref: '#/definitions/GameSettings'
+        404:
+          description: game does not exist
+
+  /games/{gameId}/players:
+    get:
+      tags: [Games]
+      summary: Players in game
+      parameters:
+        - name: gameId
+          in: path
+          required: true
+          type: string
+          format: uuid
+      responses:
+        200:
+          description: List of players
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/Player'
+        404:
+          description: game not found
+    post:
+      tags: [Games]
+      summary: Join a game
+      parameters:
+        - name: gameId
+          in: path
+          required: true
+          type: string
+          format: uuid
+      responses:
+        201:
+          description: Joined game
+          schema:
+            $ref: '#/definitions/Player'
+        400:
+          description: Game full or already started
+        409:
+          description: Already in this game
+
+  /games/{gameId}/players/{playerId}:
+    get:
+      tags: [Games]
+      summary: Get a specific player
+      parameters:
+        - name: gameId
+          in: path
+          required: true
+          type: string
+          format: uuid
+        - name: playerId
+          in: path
+          required: true
+          type: string
+          format: uuid
+      responses:
+        200:
+          description: Player info
+          schema:
+            $ref: '#/definitions/Player'
+        404:
+          description: Player or game not found
+
+  /games/{gameId}/players/{playerId}/hand:
+    get:
+      tags: [Hand]
+      summary: Player hand (only own)
+      parameters:
+        - name: gameId
+          in: path
+          required: true
+          type: string
+          format: uuid
+        - name: playerId
+          in: path
+          required: true
+          type: string
+          format: uuid
+      responses:
+        200:
+          description: Cards in hand
+          schema:
+            type: object
+            properties:
+              cards:
+                type: array
+                items:
+                  $ref: '#/definitions/Card'
+              count:
+                type: integer
+        403:
+          description: Cannot view another player's hand
+        404:
+          description: Player or game not found
+
+  /games/{gameId}/discard-pile:
+    get:
+      tags: [Piles]
+      summary: Top card + active color
+      parameters:
+        - name: gameId
+          in: path
+          required: true
+          type: string
+          format: uuid
+      responses:
+        200:
+          description: Discard pile
+          schema:
+            $ref: '#/definitions/DiscardPile'
+        404:
+          description: invalid gameId
+
+  /games/{gameId}/draw-pile:
+    get:
+      tags: [Piles]
+      summary: Cards left in draw pile
+      parameters:
+        - name: gameId
+          in: path
+          required: true
+          type: string
+          format: uuid
+      responses:
+        200:
+          description: Draw pile
+          schema:
+            $ref: '#/definitions/DrawPile'
+        404:
+          description: not found
+
+  /games/{gameId}/turns/current:
+    get:
+      tags: [Turns]
+      summary: Whose turn is it
+      parameters:
+        - name: gameId
+          in: path
+          required: true
+          type: string
+          format: uuid
+      responses:
+        200:
+          description: Current turn
+          schema:
+            type: object
+            properties:
+              currentPlayerId:
+                type: string
+                format: uuid
+              playDirection:
+                type: string
+                enum: [clockwise, counter_clockwise]
+              turnNumber:
+                type: integer
+              roundNumber:
+                type: integer
+              pendingDrawCount:
+                type: integer
+        404:
+          description: no such game
+
+  /games/{gameId}/turns:
+    get:
+      tags: [Turns]
+      summary: Turn log
+      parameters:
+        - name: gameId
+          in: path
+          required: true
+          type: string
+          format: uuid
+        - name: roundNumber
+          in: query
+          type: integer
+        - name: playerId
+          in: query
+          type: string
+          format: uuid
+        - name: action
+          in: query
+          type: string
+          enum: [play_card, draw_card, say_uno, challenge_uno, challenge_wild_draw_four, choose_color, end_turn, stack_draw, swap_hands, pass_all_hands, jump_in]
+      responses:
+        200:
+          description: Turn history
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/Turn'
+        404:
+          description: game does not exist
+
+  /games/{gameId}/rounds:
+    get:
+      tags: [Rounds]
+      summary: All rounds played
+      parameters:
+        - name: gameId
+          in: path
+          required: true
+          type: string
+          format: uuid
+      responses:
+        200:
+          description: List of rounds
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/Round'
+        404:
+          description: game not found
+
+  /games/{gameId}/rounds/{roundNumber}:
+    get:
+      tags: [Rounds]
+      summary: Round details + scores
+      parameters:
+        - name: gameId
+          in: path
+          required: true
+          type: string
+          format: uuid
+        - name: roundNumber
+          in: path
+          required: true
+          type: integer
+      responses:
+        200:
+          description: Round details
+          schema:
+            $ref: '#/definitions/Round'
+        404:
+          description: Round or game not found
+
+  /games/{gameId}/scoreboard:
+    get:
+      tags: [Scoreboard]
+      summary: Scores across rounds
+      parameters:
+        - name: gameId
+          in: path
+          required: true
+          type: string
+          format: uuid
+      responses:
+        200:
+          description: Scoreboard
+          schema:
+            $ref: '#/definitions/Scoreboard'
+        404:
+          description: invalid gameId
+
+  /games/{gameId}/penalties:
+    get:
+      tags: [Penalties]
+      summary: Penalty log
+      parameters:
+        - name: gameId
+          in: path
+          required: true
+          type: string
+          format: uuid
+        - name: playerId
+          in: query
+          type: string
+          format: uuid
+        - name: type
+          in: query
+          type: string
+          enum: [missed_uno, illegal_wild_draw_four, timeout, forfeit]
+      responses:
+        200:
+          description: Penalties
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/Penalty'
+        404:
+          description: not found
+
+  /games/{gameId}/actions/start:
+    post:
+      tags: [Actions]
+      summary: Start game (host only)
+      parameters:
+        - name: gameId
+          in: path
+          required: true
+          type: string
+          format: uuid
+      responses:
+        200:
+          description: Game started
+          schema:
+            $ref: '#/definitions/ActionResultResponse'
+        400:
+          description: Not enough players
+        403:
+          description: Not the host
+
+  /games/{gameId}/actions/play-card:
+    post:
+      tags: [Actions]
+      summary: Play a card
+      parameters:
+        - name: gameId
+          in: path
+          required: true
+          type: string
+          format: uuid
+        - name: body
+          in: body
+          required: true
+          schema:
+            $ref: '#/definitions/PlayCardRequest'
+      responses:
+        200:
+          description: Card played
+          schema:
+            $ref: '#/definitions/ActionResultResponse'
+        400:
+          description: Invalid move
+        403:
+          description: Not your turn
+
+  /games/{gameId}/actions/draw-card:
+    post:
+      tags: [Actions]
+      summary: Draw from pile
+      parameters:
+        - name: gameId
+          in: path
+          required: true
+          type: string
+          format: uuid
+      responses:
+        200:
+          description: Card(s) drawn
+          schema:
+            $ref: '#/definitions/ActionResultResponse'
+        403:
+          description: Not your turn
+
+  /games/{gameId}/actions/say-uno:
+    post:
+      tags: [Actions]
+      summary: Say UNO
+      parameters:
+        - name: gameId
+          in: path
+          required: true
+          type: string
+          format: uuid
+      responses:
+        200:
+          description: UNO declared
+          schema:
+            $ref: '#/definitions/ActionResultResponse'
+        400:
+          description: More than one card in hand
+
+  /games/{gameId}/actions/choose-color:
+    post:
+      tags: [Actions]
+      summary: Pick color after wild card
+      parameters:
+        - name: gameId
+          in: path
+          required: true
+          type: string
+          format: uuid
+        - name: body
+          in: body
+          required: true
+          schema:
+            $ref: '#/definitions/ChooseColorRequest'
+      responses:
+        200:
+          description: Color chosen
+          schema:
+            $ref: '#/definitions/ActionResultResponse'
+        400:
+          description: No color choice pending
+
+  /games/{gameId}/actions/end-turn:
+    post:
+      tags: [Actions]
+      summary: Finish turn
+      parameters:
+        - name: gameId
+          in: path
+          required: true
+          type: string
+          format: uuid
+      responses:
+        200:
+          description: Turn ended
+          schema:
+            $ref: '#/definitions/ActionResultResponse'
+        403:
+          description: Not your turn
+        409:
+          description: Must draw or play first

@@ -1,0 +1,37 @@
+{% extends 'layout.twig' %}
+{% block title %}{{ game.name }} · UNO Extended{% endblock %}
+{% block content %}
+<h1>{{ game.name }}</h1>
+<p>
+    Phase: <span class="badge">{{ game.phase }}</span> |
+    Round: {{ game.currentRound }} |
+    Direction: {{ game.playDirection }} |
+    Active color: {{ game.activeColor ?? 'n/a' }}
+</p>
+
+<h2>Players</h2>
+<table>
+    <tr><th>Display</th><th>Cards</th><th>Score</th><th>Said UNO</th></tr>
+    {% for p in players %}
+        <tr>
+            <td>{{ p.displayName }}{% if p.id == game.hostPlayerId %} <span class="badge">host</span>{% endif %}</td>
+            <td>{{ p.cardCount }}</td>
+            <td>{{ p.totalScore }}</td>
+            <td>{{ p.saidUno ? 'da' : '' }}</td>
+        </tr>
+    {% endfor %}
+</table>
+
+{% if game.phase == 'lobby' %}
+    <form method="post" action="{{ basePath }}/games-view/{{ game.id }}/join">
+        <p>Join ca user: <input type="text" name="userId" size="40" required></p>
+        <button type="submit">Join</button>
+    </form>
+    <form method="post" action="{{ basePath }}/games-view/{{ game.id }}/start">
+        <p>Pornit ca host (userId): <input type="text" name="userId" size="40" required></p>
+        <button type="submit">Start game</button>
+    </form>
+{% endif %}
+
+<p><a href="{{ basePath }}/games-view">↩ înapoi la listă</a></p>
+{% endblock %}

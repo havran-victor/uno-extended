@@ -1,0 +1,31 @@
+{
+    "name": "uvt/uno-extended",
+    "description": "UNO Extended Edition — Sprint #2 backend",
+    "type": "project",
+    "require": {
+        "php": "^8.1",
+        "slim/slim": "^4.12",
+        "slim/psr7": "^1.6",
+        "php-di/php-di": "^7.0",
+        "slim/twig-view": "^3.3",
+        "twig/twig": "^3.7",
+        "firebase/php-jwt": "^6.10",
+        "ramsey/uuid": "^4.7",
+        "vlucas/phpdotenv": "^5.6"
+    },
+    "autoload": {
+        "psr-4": {
+            "Uno\\": "src/"
+        }
+    },
+    "config": {
+        "optimize-autoloader": true,
+        "sort-packages": true,
+        "audit": {
+            "abandoned": "report"
+        }
+    },
+    "scripts": {
+        "post-install-cmd": []
+    }
+}

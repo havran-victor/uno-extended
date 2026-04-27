@@ -1,0 +1,9 @@
+RewriteEngine On
+
+# If the file/dir doesn't exist, route all requests to index.php
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^ index.php [QSA,L]
+
+# YAML mime type (pentru OpenAPI spec)
+AddType application/x-yaml .yaml .yml

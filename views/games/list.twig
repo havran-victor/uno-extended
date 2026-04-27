@@ -1,0 +1,40 @@
+{% extends 'layout.twig' %}
+{% block title %}Games · UNO Extended{% endblock %}
+{% block content %}
+<h1>Games</h1>
+
+<form method="post" action="{{ basePath }}/games-view/create">
+    <h2>Creează joc nou</h2>
+    <input type="hidden" name="userId" value="{{ defaultUserId }}">
+    <p>
+        Host (userId): <input type="text" name="hostUserId" value="{{ defaultUserId }}" size="40">
+    </p>
+    <p>Nume: <input type="text" name="name" required></p>
+    <p>Max players: <input type="number" name="maxPlayers" value="4" min="2" max="10"></p>
+    <p>Points to win: <input type="number" name="pointsToWin" value="500" min="1"></p>
+    <p>
+        <label><input type="checkbox" name="allowStacking"> Stacking</label>
+        <label><input type="checkbox" name="sevenZeroRule"> 7-0 rule</label>
+        <label><input type="checkbox" name="allowJumpIn"> Jump-in</label>
+    </p>
+    <button type="submit">Creează</button>
+</form>
+
+<h2>Listă jocuri</h2>
+{% if games is empty %}
+    <p><em>Niciun joc.</em></p>
+{% else %}
+<table>
+    <tr><th>Nume</th><th>Phase</th><th>Players</th><th>Points</th><th>Detalii</th></tr>
+    {% for g in games %}
+        <tr>
+            <td>{{ g.name }}</td>
+            <td><span class="badge">{{ g.phase }}</span></td>
+            <td>{{ g.maxPlayers }}</td>
+            <td>{{ g.pointsToWin }}</td>
+            <td><a href="{{ basePath }}/games-view/{{ g.id }}">vezi</a></td>
+        </tr>
+    {% endfor %}
+</table>
+{% endif %}
+{% endblock %}

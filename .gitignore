@@ -1,0 +1,5 @@
+.env
+vendor/
+composer.phar
+HANDOVER.md
+docs/sprint_2.md

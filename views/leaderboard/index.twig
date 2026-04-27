@@ -1,0 +1,18 @@
+{% extends 'layout.twig' %}
+{% block title %}Leaderboard · UNO Extended{% endblock %}
+{% block content %}
+<h1>Leaderboard global</h1>
+<table>
+    <tr><th>Rank</th><th>Player</th><th>Wins</th><th>Win rate</th><th>Total points</th></tr>
+    {% for e in entries %}
+        <tr>
+            <td>{{ e.rank }}</td>
+            <td>{{ e.displayName }}</td>
+            <td>{{ e.gamesWon }}</td>
+            <td>{{ (e.winRate * 100) | number_format(1) }}%</td>
+            <td>{{ e.totalPoints }}</td>
+        </tr>
+    {% endfor %}
+</table>
+<p>Total: {{ totalCount }} players</p>
+{% endblock %}
