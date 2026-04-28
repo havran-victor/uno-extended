@@ -7,9 +7,9 @@ info:
     configurable house rules (stacking, 7-0 swap, jump-in,
     speed mode, teams).
 schemes:
-  - https
-host: uno-api.example.io
-basePath: /v1
+  - http
+host: localhost:8080
+basePath: /
 
 securityDefinitions:
   BearerAuth:
@@ -374,6 +374,34 @@ definitions:
         type: string
 
 paths:
+
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Login and get JWT token
+      security: []
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+            required: [email, password]
+            properties:
+              email:
+                type: string
+                example: alice@uno.test
+              password:
+                type: string
+                example: demo1234
+      responses:
+        200:
+          description: JWT token
+          schema:
+            type: object
+            properties:
+              token:
+                type: string
 
   /users/{userId}:
     get:
