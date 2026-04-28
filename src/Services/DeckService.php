@@ -45,10 +45,10 @@ final class DeckService
             }
         }
 
-        // prima carte care nu e wild_draw_four - regula UNO pentru top card initial
+        // prima carte number - regula UNO pentru top card initial
         $topIdx = null;
         for ($i = $dealtUntil; $i < count($deck); $i++) {
-            if ($deck[$i]['type'] !== 'wild_draw_four') {
+            if ($deck[$i]['type'] === 'number') {
                 $topIdx = $i;
                 break;
             }
